@@ -1,5 +1,6 @@
 /**
- * REGENERA A SEÇÃO SLIDE A SLIDE de `docs/pitch-kickoff.md`.
+ * REGENERA A SEÇÃO SLIDE A SLIDE de `docs/pitch-kickoff.md`, de `docs/ml-av1.md` e de
+ * `docs/pitch-sr1.md`.
  *
  * O documento é a versão para ler e ensaiar longe do navegador, e um teste em
  * `src/content/pitch.test.ts` exige que ele contenha o título e cada fala de
@@ -15,6 +16,22 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { nomeCurto } from '../src/content/equipe'
 import { SLIDES, formatarTempo, inicioDoSlide, palavrasNaTela } from '../src/content/pitch'
+import {
+  ETAPAS,
+  SLIDES_ML,
+  type SlideML,
+  type SlideMLId,
+  inicioDoSlideML,
+  palavrasNaTela as palavrasNaTelaML,
+} from '../src/content/apresentacao-ml'
+import {
+  SLIDES_SR1,
+  type SlideSR1,
+  type SlideSR1Id,
+  inicioDoSlide as inicioDoSlideSR1,
+  palavrasNaTela as palavrasNaTelaSR1,
+  rotuloDaParte,
+} from '../src/content/apresentacao-sr1'
 
 const ARQUIVO = join(process.cwd(), 'docs', 'pitch-kickoff.md')
 const ABRE = '<!-- roteiro:inicio -->'
@@ -36,13 +53,120 @@ function corpo(): string {
   }).join('\n\n')
 }
 
-const original = readFileSync(ARQUIVO, 'utf8')
-const inicio = original.indexOf(ABRE)
-const fim = original.indexOf(FECHA)
-if (inicio < 0 || fim < 0) {
-  throw new Error(`Marcadores ${ABRE} e ${FECHA} não encontrados em docs/pitch-kickoff.md`)
+/** A AV1 de machine learning: sem "quem fala", com a etapa da avaliação. */
+function corpoML(): string {
+  return (SLIDES_ML as readonly SlideML[]).map((slide, indice) => {
+    const falas = slide.notas.map((nota) => `  1. ${nota}`).join('\n')
+    const etapa = slide.etapa ? `etapa ${slide.etapa}, ${ETAPAS[slide.etapa]}` : 'abertura e fechamento'
+    return [
+      `### Slide ${slide.numero}: ${slide.titulo}`,
+      '',
+      `- **Começa em** ${formatarTempo(inicioDoSlideML(indice))} · **dura** ${formatarTempo(slide.segundos)} · **${etapa}** · **${palavrasNaTelaML(slide.id as SlideMLId)} palavras na tela**`,
+      `- **Frase da tela:** ${slide.apoio}`,
+      `- **O que a tela mostra:** ${slide.visual}`,
+      '- **A fala:**',
+      falas,
+      ...(slide.perguntas?.length
+        ? ['- **Se perguntarem** (fora do tempo):', ...slide.perguntas.map((p) => `  - ${p}`)]
+        : []),
+    ].join('\n')
+  }).join('\n\n')
 }
 
-const novo = `${original.slice(0, inicio + ABRE.length)}\n\n${corpo()}\n\n${original.slice(fim)}`
-writeFileSync(ARQUIVO, novo)
+/** O SR1: quem fala, e a que parte da rubrica o slide responde. */
+/**
+ * A cola do ensaio: quem fala, em que slides e a partir de que minuto. Sai dos
+ * mesmos dados do deck, então nunca fica para trás quando um tempo muda.
+ */
+function colaDoEnsaioSR1(): string {
+  const slides = SLIDES_SR1 as readonly SlideSR1[]
+  const blocos: { quem: SlideSR1['quemFala']; de: number; ate: number }[] = []
+  slides.forEach((slide, indice) => {
+    const ultimo = blocos.at(-1)
+    if (ultimo && ultimo.quem === slide.quemFala) ultimo.ate = indice
+    else blocos.push({ quem: slide.quemFala, de: indice, ate: indice })
+  })
+  const ordem = [...new Set(slides.map((s) => s.quemFala))]
+  const linhas = ordem.map((quem) => {
+    const trechos = blocos
+      .filter((b) => b.quem === quem)
+      .map((b) => {
+        const numeros =
+          b.de === b.ate
+            ? `${b.de + 1}`
+            : b.ate === b.de + 1
+              ? `${b.de + 1} e ${b.ate + 1}`
+              : `${b.de + 1} a ${b.ate + 1}`
+        return `${numeros} (${formatarTempo(inicioDoSlideSR1(b.de))})`
+      })
+      .join(' · ')
+    const total = slides.filter((s) => s.quemFala === quem).reduce((soma, s) => soma + s.segundos, 0)
+    return `| ${nomeCurto(quem)} | ${trechos} | ${formatarTempo(total)} |`
+  })
+  return [
+    '### Cola do ensaio: quem fala, em que slides e a partir de que minuto',
+    '',
+    '| Quem | Slides (começa em) | Tempo de fala |',
+    '| --- | --- | --- |',
+    ...linhas,
+    '',
+    `Total de fala: ${formatarTempo(inicioDoSlideSR1(slides.length))}, com limite de 15:00. Quem passa o slide é quem opera a tela, não quem fala.`,
+  ].join('\n')
+}
+
+function corpoSR1(): string {
+  return [colaDoEnsaioSR1(), ...(SLIDES_SR1 as readonly SlideSR1[]).map((slide, indice) => {
+    const falas = slide.notas.map((nota) => `  1. ${nota}`).join('\n')
+    const parte =
+      slide.parte === 'abertura' || slide.parte === 'encerramento'
+        ? `${slide.parte}, fora dos critérios`
+        : `critério ${rotuloDaParte(slide.parte)}`
+    return [
+      `### Slide ${slide.numero}: ${slide.titulo}`,
+      '',
+      `- **Começa em** ${formatarTempo(inicioDoSlideSR1(indice))} · **dura** ${formatarTempo(slide.segundos)} · **quem fala:** ${nomeCurto(slide.quemFala)} · **${palavrasNaTelaSR1(slide.id as SlideSR1Id)} palavras na tela**`,
+      `- **Parte da rubrica:** ${parte}`,
+      `- **Frase da tela:** ${slide.apoio}`,
+      `- **O que a tela mostra:** ${slide.visual}`,
+      '- **A fala:**',
+      falas,
+      ...(slide.perguntas?.length
+        ? ['- **Se perguntarem** (fora do tempo):', ...slide.perguntas.map((p) => `  - ${p}`)]
+        : []),
+    ].join('\n')
+  })].join('\n\n')
+}
+
+/** Troca só o miolo entre os dois marcadores; a prosa em volta é de gente. */
+function regenerar(arquivo: string, abre: string, fecha: string, miolo: string): void {
+  const original = readFileSync(arquivo, 'utf8')
+  const inicio = original.indexOf(abre)
+  const fim = original.indexOf(fecha)
+  if (inicio < 0 || fim < 0) {
+    throw new Error(`Marcadores ${abre} e ${fecha} não encontrados em ${arquivo}`)
+  }
+  writeFileSync(arquivo, `${original.slice(0, inicio + abre.length)}\n\n${miolo}\n\n${original.slice(fim)}`)
+}
+
+regenerar(ARQUIVO, ABRE, FECHA, corpo())
 console.log(`Roteiro regenerado: ${SLIDES.length} slides, ${formatarTempo(inicioDoSlide(SLIDES.length))}.`)
+
+regenerar(
+  join(process.cwd(), 'docs', 'ml-av1.md'),
+  '<!-- roteiro-ml:inicio -->',
+  '<!-- roteiro-ml:fim -->',
+  corpoML(),
+)
+console.log(
+  `Roteiro da AV1 de ML regenerado: ${SLIDES_ML.length} slides, ${formatarTempo(inicioDoSlideML(SLIDES_ML.length))}.`,
+)
+
+regenerar(
+  join(process.cwd(), 'docs', 'pitch-sr1.md'),
+  '<!-- roteiro-sr1:inicio -->',
+  '<!-- roteiro-sr1:fim -->',
+  corpoSR1(),
+)
+console.log(
+  `Roteiro do SR1 regenerado: ${SLIDES_SR1.length} slides, ${formatarTempo(inicioDoSlideSR1(SLIDES_SR1.length))}.`,
+)

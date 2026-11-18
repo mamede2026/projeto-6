@@ -70,7 +70,16 @@ export async function TelaGestao({ ctx }: PropsTela) {
         </a>
       </AcoesDaTela>
 
-      <Painel alvo="gest-ciclo" titulo="Recorte" icone={CalendarDays}>
+      <Painel
+        alvo="gest-ciclo"
+        titulo="Recorte"
+        icone={CalendarDays}
+        descricao={
+          recorteObrigatorio
+            ? 'Neste protótipo você escolhe um distrito de exemplo. Na versão final, cada gerência veria só o próprio distrito.'
+            : undefined
+        }
+      >
         <form
           method="get"
           action={`/sistema${ancoraDaTela('painel-gestao')}`}
@@ -139,7 +148,7 @@ export async function TelaGestao({ ctx }: PropsTela) {
 
       <section id="alvo-gest-numeros" className="mt-6 grid gap-3 sm:grid-cols-3">
         {[
-          { rotulo: 'Nota média', valor: media.toFixed(2) },
+          { rotulo: 'Nota média', valor: media.toFixed(2).replace('.', ',') },
           { rotulo: 'Unidades avaliadas', valor: String(avaliacoes.length) },
           { rotulo: 'Avaliações com aviso', valor: String(comAviso) },
         ].map((item) => (
@@ -163,7 +172,7 @@ export async function TelaGestao({ ctx }: PropsTela) {
                   {dados.distritoPorId(distrital.distritoId)?.nome ?? distrital.distritoId}
                 </p>
                 <p className="numero mt-1 text-2xl font-semibold">
-                  {distrital.score.toFixed(2)}
+                  {distrital.score.toFixed(2).replace('.', ',')}
                 </p>
                 <p className="mt-0.5 text-xs text-apagado">
                   média de {distrital.porUnidade.length} unidades ·{' '}
@@ -227,7 +236,7 @@ export async function TelaGestao({ ctx }: PropsTela) {
                       {anonimizado ? 'oculto' : (distritoDaUnidade?.nome ?? '')}
                     </td>
                     <td className="numero px-3 py-1.5 font-semibold">
-                      {avaliacao.score.toFixed(2)}
+                      {avaliacao.score.toFixed(2).replace('.', ',')}
                     </td>
                     <td className="px-3 py-1.5">{avaliacao.faixa?.rotulo ?? 'sem faixa'}</td>
                     <td className="px-3 py-1.5">

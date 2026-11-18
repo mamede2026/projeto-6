@@ -1,13 +1,13 @@
 import { TRAVAS_VERSIONADAS } from '@/content/travas'
 import { CRONOGRAMA, type CicloId } from '@/lib/cronograma'
-import { FEATURES } from '@/lib/features'
-import { hojeEmRecife } from '@/lib/datas'
+import { FEATURES, PERFIL_PADRAO, type PerfilId } from '@/lib/features'
+import { hojeEmRecife, somarDias, type DataISO } from '@/lib/datas'
+import { deckEmDestaque, type DeckDoMarco } from '@/lib/decks'
 import {
   ADIANTAMENTO_PADRAO,
   calcularReleaseAtual,
   ciclosVisiveis,
   ehSemanaCorrente,
-  pitchEmDestaque,
 } from '@/lib/releases'
 
 /**
@@ -72,9 +72,13 @@ export const CICLOS_PUBLICOS: readonly CicloId[] = RECORTE.visiveis
 export const CICLO_DA_SEMANA: CicloId | null =
   RECORTE.todosVisiveis.find((id) => ehSemanaCorrente(hojeEmRecife(), id)) ?? null
 
-/** O topo do site deve oferecer o pitch hoje? Mesma conta que a home faz. */
-export const DEVE_OFERECER_PITCH: boolean =
-  RECORTE.todosVisiveis.includes('ko') && pitchEmDestaque(hojeEmRecife())
+/**
+ * Que deck o topo do site deve oferecer hoje, se algum. Mesma conta que a
+ * home faz: o do marco mais recente já liberado, dentro da janela de destaque.
+ */
+export const DECK_EM_DESTAQUE: DeckDoMarco | null = deckEmDestaque(hojeEmRecife(), (ciclo) =>
+  RECORTE.todosVisiveis.includes(ciclo),
+)
 
 /** O primeiro ciclo que o visitante AINDA não vê: o alvo natural do teste de vazamento. */
 export const CICLO_OCULTO: CicloId = RECORTE.ocultos[0]
@@ -95,6 +99,43 @@ export const ROTAS_FECHADAS: readonly string[] = FEATURES.filter(
 export const ROTAS_ABERTAS: readonly string[] = FEATURES.filter((f) =>
   RECORTE.todosVisiveis.includes(f.ciclo),
 ).map((f) => f.rota)
+
+/**
+ * A véspera do dia em que a última leva de telas saiu, e o que estava fechado nela.
+ *
+ * Desde a véspera do SR1 as oito telas estão no ar, e `ROTAS_FECHADAS` ficou
+ * vazia: o teste do portão de release deixaria de medir qualquer coisa. O
+ * portão continua existindo, então o teste passa a exercitá-lo numa data em que
+ * ele fechava alguma coisa, pela prévia de visitante com data simulada do
+ * painel. A data sai do cronograma e das features, nunca escrita à mão.
+ */
+function vesperaDaUltimaTela(): {
+  data: DataISO
+  fechadas: readonly string[]
+  /** Liberadas naquela data e do perfil padrão: respondem com redirecionamento. */
+  abertas: readonly string[]
+} {
+  const ordem = CRONOGRAMA.map((c) => c.id as CicloId)
+  const ultimo = [...FEATURES]
+    .map((f) => f.ciclo as CicloId)
+    .sort((a, b) => ordem.indexOf(a) - ordem.indexOf(b))
+    .at(-1)
+  const abre = CRONOGRAMA.find((c) => c.id === ultimo)?.data ?? hojeEmRecife()
+  const data = somarDias(abre, -ADIANTAMENTO_PADRAO - 1)
+  const releaseAtual = calcularReleaseAtual({ hoje: data, adiantamentoDias: ADIANTAMENTO_PADRAO })
+  const visiveis = ciclosVisiveis({ releaseAtual, travas: TRAVAS_VERSIONADAS })
+  return {
+    data,
+    fechadas: FEATURES.filter((f) => !visiveis.includes(f.ciclo)).map((f) => f.rota),
+    // Abertas E do perfil de quem chega sem escolher: essas redirecionam.
+    abertas: FEATURES.filter(
+      (f) =>
+        visiveis.includes(f.ciclo) && (f.perfis as readonly PerfilId[]).includes(PERFIL_PADRAO),
+    ).map((f) => f.rota),
+  }
+}
+
+export const VESPERA_DA_ULTIMA_TELA = vesperaDaUltimaTela()
 
 /**
  * O marcador que o registro imprime no HTML de cada ciclo renderizado.

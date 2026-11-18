@@ -759,6 +759,14 @@ html:fullscreen .ajuda-deck {
   display: none;
 }
 
+/* No toque não há teclado: a ajuda só ocupava espaço, e na capa da AV1, que
+   fica no alto, ela quebrava em quatro linhas por cima da pílula. */
+@media (max-width: 639px) {
+  .ajuda-deck {
+    display: none;
+  }
+}
+
 /* Modo deck: um slide por vez, ocupando exatamente o que sobra abaixo do
    cromo, para a página não rolar. As notas só aparecem com a tecla `n`, já
    abertas. O slide da demonstração rola por dentro, para a memória de
@@ -868,6 +876,17 @@ html:fullscreen [data-modo='deck'] .slide {
 /* Em tela cheia o cromo devolve 53px, que é quase um degrau inteiro. */
 html:fullscreen [data-modo='deck'] .slide-demo .demo {
   zoom: calc(var(--zoom-demo) * 1.08);
+}
+
+/* NO SR1 A CONTA É PELA REGRA V3, e ela é mais alta: a linha da conta final
+   descreve o método de notas e quebra em duas, e junho tem os cinco
+   indicadores. A mesma receita, um degrau abaixo. */
+[data-modo='deck'] .slide-sr1.slide-demo .demo {
+  zoom: calc(var(--zoom-demo) * 0.9);
+}
+
+html:fullscreen [data-modo='deck'] .slide-sr1.slide-demo .demo {
+  zoom: calc(var(--zoom-demo) * 0.97);
 }
 
 /* Embaixo, no centro: o rodapé do slide já ocupa os dois cantos. */
@@ -1206,6 +1225,13 @@ html:fullscreen .ajuda-deck {
     zoom: 0.92;
   }
 
+  /* O seletor do deck vem junto: o PDF é impresso com o deck ligado, e a
+     regra da tela, mais específica, venceria a do papel. */
+  .slide-sr1.slide-demo .demo,
+  [data-modo='deck'] .slide-sr1.slide-demo .demo {
+    zoom: 0.86;
+  }
+
   .slide-demo .como-ler,
   .slide-demo .demo summary {
     display: none;
@@ -1221,10 +1247,16 @@ html:fullscreen .ajuda-deck {
   }
 
   /* O papel é o estado final: nenhuma animação, nenhum atraso. Sem isto, a
-     página sai congelada no primeiro quadro, com metade do slide invisível. */
-  .slide *,
-  .slide *::before,
-  .slide *::after {
+     página sai congelada no primeiro quadro, com metade do slide invisível.
+
+     MENOS O QUE MORA DENTRO DE UM SVG. Ali `transform` não é animação: é o
+     atributo que põe cada peça no lugar, e a propriedade CSS vence o
+     atributo. Zerada, a faixa do Recife saía no PDF sem os cactos, sem os
+     pássaros e sem os raios do sol, todos empilhados na origem do desenho,
+     e o PDF do Kick-off saiu assim. O próprio <svg> continua zerado. */
+  .slide :not(svg *),
+  .slide :not(svg *)::before,
+  .slide :not(svg *)::after {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
@@ -1240,4 +1272,297 @@ html:fullscreen .ajuda-deck {
   .horizonte {
     display: block !important;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   A AV1 DE MACHINE LEARNING (/ml)
+
+   O mesmo deck do Kick-off, com duas diferenças que o conteúdo pede. A
+   primeira: os slides carregam gráfico, então o título e a frase de apoio
+   cedem um degrau para o visual caber em 1280x720 sem cortar. A segunda: os
+   gráficos são HTML pintado com tokens (src/components/ml/graficos.tsx), e
+   cada cor daqui é uma mistura do texto com transparente ou o próprio acento.
+   Nenhum hexadecimal: no claro, tudo acompanha sozinho (regra 10 da casa).
+
+   Nenhuma posição usa `transform`: a folha de impressão acima zera toda
+   transformação dentro de `.slide`, e o ponto sairia fora do lugar no PDF.
+--------------------------------------------------------------------------- */
+
+.slide-ml .slide-titulo {
+  max-width: 40ch;
+  font-size: clamp(1.45rem, 2.9vw, 2.2rem);
+}
+
+.slide-ml .slide-apoio {
+  max-width: 72ch;
+  margin-top: 0.55rem;
+  font-size: clamp(0.95rem, 1.3vw, 1.1rem);
+  line-height: 1.5;
+  /* Sem palavra sozinha na última linha: "máquina", "linha dos 90%". */
+  text-wrap: balance;
+}
+
+[data-modo='deck'] .slide-ml {
+  padding-top: 32px;
+  padding-bottom: 60px;
+}
+
+/* CENTRALIZADO, COMO NO KICK-OFF, E É DECISÃO. A revisão sugeriu o título no
+   alto de todo slide, para ele não mudar de altura a cada troca. Testado, o
+   PDF saiu com metade de várias páginas vazia embaixo, e o slide com pouco
+   conteúdo parecia inacabado. A altura do título varia; a página cheia vale
+   mais. */
+
+/* O DECK CRESCE COM A TELA. Tudo aqui é medido em rem, então num projetor de
+   1080 linhas o slide virava uma faixa estreita no meio, com rótulo de 12px.
+   `zoom` (e não `scale`) porque participa do layout: a caixa cresce de verdade
+   e nada vaza. O slide mais alto mede ~570px em 720; 1,4 vezes isso cabe nos
+   ~930px de uma tela de 1080. A capa fica de fora porque a faixa do Recife é
+   absoluta e cresceria para fora da tela; o PDF, porque é `screen`. */
+@media screen and (min-width: 1500px) and (min-height: 880px) {
+  [data-modo='deck'] .slide-ml:not(.capa-ml) .slide-corpo {
+    zoom: 1.2;
+  }
+}
+
+@media screen and (min-width: 1800px) and (min-height: 1000px) {
+  [data-modo='deck'] .slide-ml:not(.capa-ml) .slide-corpo {
+    zoom: 1.4;
+  }
+}
+
+/* Os ordinais 01 a 06 com a cor da hairline davam 1,8:1 e sumiam projetados.
+   No deck da AV1 eles são o número da etapa que os outros slides citam. */
+.slide-ml .ordinal {
+  color: var(--color-apagado);
+}
+
+/* ---------------------------------------------------------------------------
+   O DECK DO SR1, LEGÍVEL NUMA CHAMADA DE VÍDEO (ADR-047)
+
+   As orientações do SR1 pedem "fontes legíveis, cores contrastantes" e
+   slides numerados. A apresentação é por vídeo: a tela chega comprimida e
+   menor do que num projetor. Então o SR1 herda a escala compacta da AV1 (os
+   slides são mais densos, porque precisam ser autocontidos), os ordinais
+   ganham a cor legível, o rótulo e o rodapé crescem, e a posição atual/total
+   sai do cinza.
+--------------------------------------------------------------------------- */
+
+.slide-sr1 .slide-titulo {
+  max-width: 40ch;
+  font-size: clamp(1.45rem, 2.9vw, 2.2rem);
+  text-wrap: balance;
+}
+
+.slide-sr1 .slide-apoio {
+  max-width: 72ch;
+  margin-top: 0.55rem;
+  font-size: clamp(0.95rem, 1.3vw, 1.1rem);
+  line-height: 1.5;
+  text-wrap: balance;
+}
+
+[data-modo='deck'] .slide-sr1 {
+  padding-top: 32px;
+  padding-bottom: 60px;
+}
+
+.slide-sr1 .ordinal {
+  color: var(--color-apagado);
+}
+
+.slide-sr1:not(.slide-demo) .rotulo {
+  font-size: 0.8125rem;
+}
+
+.slide-sr1 .slide-rodape {
+  font-size: 0.875rem;
+}
+
+.slide-sr1 .rodape-posicao {
+  font-size: 1rem;
+  color: var(--color-texto);
+}
+
+/* A DENSIDADE DO SR1. `.bloco-raso` mora fora de camada, então vence os
+   utilitários de espaçamento e de cor de borda (é o caso que a ADR-033 deixou
+   de fora): `py-2` e `border-acento` escritos num bloco raso não têm efeito.
+   Os slides do SR1 são tabelas e listas densas, então a densidade e o
+   destaque vêm daqui, com o mesmo escopo e fora de camada de propósito, para
+   vencer a regra de base. Linha de tabela usa `linha-sr1`; célula de linha do
+   tempo, `celula-sr1`. */
+.slide-sr1 .bloco-raso {
+  padding: 14px 18px;
+}
+
+.slide-sr1 .bloco-raso.linha-sr1 {
+  padding: 7px 16px;
+}
+
+.slide-sr1 .bloco-raso.celula-sr1 {
+  padding: 10px 12px;
+}
+
+.slide-sr1 .bloco-raso.border-acento {
+  border-color: var(--color-acento);
+  z-index: 10;
+}
+
+/* A capa do SR1 tem uma linha a mais que a do Kick-off (a disciplina e o
+   curso), e o bloco centralizado descia até a paisagem do Recife: o cacto
+   cortava os nomes. O respiro embaixo, do tamanho da paisagem, sobe o bloco;
+   a frase de apoio cabe numa linha. */
+@media (min-width: 768px) {
+  .slide-sr1.grao {
+    padding-bottom: calc(64px + 10rem);
+  }
+
+  .slide-sr1.grao .slide-apoio {
+    max-width: 90ch;
+  }
+}
+
+/* O wireframe desenha com a hairline, que no escuro some numa tela
+   compartilhada. Aqui o traço usa o cinza de texto: é remapeamento de token
+   dentro da caixa, não cor nova, e acompanha os dois temas. As barras que
+   fazem papel de texto também usavam a hairline (1,28:1 no escuro) e sumiam
+   no PDF: ficam entre a hairline e o traço, mais fracas que ele. */
+.wireframe-sr1 {
+  --color-linha-alta: var(--color-apagado);
+  --color-linha: color-mix(in srgb, var(--color-apagado) 60%, var(--color-fundo));
+}
+
+/* Um acento só, além do rodapé: as pílulas de quem falta, no painel da SEAB
+   (o terceiro desenho). Os outros três desenham o destaque em cinza. */
+.wireframe-sr1:not(:nth-child(3)) {
+  --color-acento: var(--color-apagado);
+}
+
+@media screen and (min-width: 1500px) and (min-height: 880px) {
+  [data-modo='deck'] .slide-sr1:not(.grao):not(.slide-demo) .slide-corpo {
+    zoom: 1.2;
+  }
+}
+
+@media screen and (min-width: 1800px) and (min-height: 1000px) {
+  [data-modo='deck'] .slide-sr1:not(.grao):not(.slide-demo) .slide-corpo {
+    zoom: 1.4;
+  }
+}
+
+/* As respostas preparadas, dentro das notas: separadas da fala por uma
+   hairline, porque não entram no tempo. */
+.notas-perguntas {
+  padding: 0.75rem 0.75rem 0.75rem 2rem;
+  border-top: 1px solid var(--color-linha);
+  color: var(--color-apagado);
+}
+
+.notas-perguntas ul {
+  margin-top: 0.4rem;
+  list-style: disc;
+}
+
+.notas-perguntas li + li {
+  margin-top: 0.4rem;
+}
+
+/* A capa sobe: centralizada, a lista de nove nomes caía em cima da faixa do
+   Recife. No alto, o texto termina antes de o desenho começar. */
+.capa-ml {
+  justify-content: flex-start;
+}
+
+[data-modo='deck'] .capa-ml {
+  padding-top: 56px;
+}
+
+/* O cursor do wordmark desce abaixo da linha de base e encostava na frase. */
+.capa-ml .slide-apoio {
+  margin-top: 1.1rem;
+}
+
+.graf-barra {
+  background: color-mix(in srgb, var(--color-texto) 62%, transparent);
+}
+
+.graf-trilho {
+  background: color-mix(in srgb, var(--color-texto) 7%, transparent);
+}
+
+/* As linhas de referência a 50% do texto: com a hairline alta davam menos de
+   3:1, e a diagonal do slide 14, que é o argumento do slide, sumia no projetor. */
+.graf-zero,
+.graf-bigode {
+  background: color-mix(in srgb, var(--color-texto) 50%, transparent);
+}
+
+/* Caixa opaca: translúcida, o bigode atravessava o miolo dela. */
+.graf-caixa {
+  border: 1px solid color-mix(in srgb, var(--color-texto) 50%, transparent);
+  background: color-mix(in srgb, var(--color-texto) 16%, var(--color-fundo));
+}
+
+.graf-mediana {
+  background: var(--color-texto);
+}
+
+.graf-ponto {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  margin: 0 0 -3px -3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-texto) 48%, transparent);
+}
+
+/* Nas caixas a altura vem de `top: 50%`, e não de `bottom`. */
+.graf-ponto-meio {
+  margin: -3px 0 0 -3px;
+}
+
+.graf-ponto-acento {
+  z-index: 1;
+  width: 11px;
+  height: 11px;
+  margin: 0 0 -5.5px -5.5px;
+  background: var(--color-acento);
+  box-shadow: 0 0 0 2px var(--color-fundo);
+}
+
+.graf-corte {
+  border-left: 1px dashed var(--color-acento);
+}
+
+.graf-eixo,
+.graf-quadro {
+  border-color: color-mix(in srgb, var(--color-texto) 50%, transparent);
+}
+
+.graf-diagonal {
+  stroke: color-mix(in srgb, var(--color-texto) 55%, transparent);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+
+.graf-celula {
+  border: 1px solid var(--color-fundo);
+}
+
+.graf-celula-acento {
+  outline: 2px solid var(--color-acento);
+  outline-offset: -2px;
+}
+
+/* A planilha inteira em grade. 52 por 49 quadros, e não 260 por 244: célula
+   de um pixel e meio vira cinza liso no projetor. */
+.graf-ausentes {
+  border-color: var(--color-linha-alta);
+  background-color: color-mix(in srgb, var(--color-texto) 5%, transparent);
+  background-image:
+    linear-gradient(to right, var(--color-linha) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-linha) 1px, transparent 1px);
+  background-size:
+    calc(100% / 52) 100%,
+    100% calc(100% / 49);
 }

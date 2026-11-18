@@ -12,6 +12,11 @@
  *   6. `/pitch`, a primeira rota protegida por CICLO e não por funcionalidade,
  *      responde 404 enquanto o Kick-off estiver oculto e 200 para o admin; e
  *      nenhum texto de slide chega ao bundle do cliente.
+ *   7. `/ml`, a AV1 de machine learning, responde 200 e também não põe texto
+ *      de slide no bundle do cliente.
+ *   8. `/sr1`, o deck do SR1, tem o mesmo portão do `/pitch`, agora pelo ciclo
+ *      `sr1`: 404 enquanto oculto, 200 para o admin, PDF pelo mesmo portão e
+ *      nenhum texto de slide no bundle do cliente.
  *
  * Uso: npm run verificar-vazamento    (exige `npm run build` antes)
  */
@@ -23,6 +28,8 @@ import { IDS_CICLOS, type CicloId } from '../src/lib/cronograma'
 import { hojeEmRecife } from '../src/lib/datas'
 import { FEATURES, PERFIL_PADRAO, type PerfilId } from '../src/lib/features'
 import { SLIDES, textoNaTela } from '../src/content/pitch'
+import { SLIDES_ML, textoNaTela as textoNaTelaML } from '../src/content/apresentacao-ml'
+import { SLIDES_SR1, textoNaTela as textoNaTelaSR1 } from '../src/content/apresentacao-sr1'
 import { ciclosVisiveis, calcularReleaseAtual, ADIANTAMENTO_PADRAO } from '../src/lib/releases'
 import { TRAVAS_VERSIONADAS } from '../src/content/travas'
 import { criarTokenSessao, NOME_COOKIE_SESSAO } from '../src/lib/admin/sessao'
@@ -137,7 +144,7 @@ async function main() {
     // ---- 1 e 2: HTML e payload RSC das páginas públicas ----
     // `/registro` saiu da lista: virou redirecionamento para `/#registro`, e o
     // registro semanal agora é uma seção da raiz. Conferir a raiz é conferir ele.
-    for (const rota of ['/', '/transparencia-ia', '/arquitetura']) {
+    for (const rota of ['/', '/transparencia-ia', '/arquitetura', '/ml']) {
       const html = await (await fetch(`${BASE}${rota}`)).text()
       const flight = await (await fetch(`${BASE}${rota}`, { headers: { RSC: '1' } })).text()
 
@@ -257,7 +264,7 @@ async function main() {
     const htmlDoPitch = await pitchAdmin.text()
     conferir(
       SLIDES.every((slide) => htmlDoPitch.includes(slide.titulo)),
-      'admin recebe os nove slides no HTML do /pitch',
+      'admin recebe todos os slides no HTML do /pitch',
     )
 
     // NENHUM ARTEFATO DO DECK É ESTÁTICO. As nove capturas moraram em
@@ -318,6 +325,75 @@ async function main() {
       conferir(
         vazando.length === 0,
         `bundle do cliente sem o texto do slide ${slide.numero}${
+          vazando.length ? ` (encontrado em ${vazando.map((v) => v.caminho).join(', ')})` : ''
+        }`,
+      )
+    }
+
+    // ---- 7: a AV1 de machine learning ----
+    // Sem portão de release (é entrega de outra disciplina, como /arquitetura),
+    // então o visitante recebe 200. Mas o deck reaproveita o MESMO componente
+    // cliente do pitch, e a garantia dele é não receber texto: se uma frase de
+    // slide aparecer em `.next/static`, alguém passou conteúdo por props.
+    const ml = await fetch(`${BASE}/ml`)
+    conferir(ml.status === 200, `/ml responde 200 para o visitante — recebeu ${ml.status}`)
+    for (const slide of SLIDES_ML) {
+      const textos = [slide.titulo, ...textoNaTelaML(slide.id)].filter(
+        (t) => t.length >= 20 && t.split(/\s+/).length >= 4,
+      )
+      const vazando = conteudos.filter((a) => textos.some((t) => a.texto.includes(t)))
+      conferir(
+        vazando.length === 0,
+        `bundle do cliente sem o texto do slide ${slide.numero} da AV1 de ML${
+          vazando.length ? ` (encontrado em ${vazando.map((v) => v.caminho).join(', ')})` : ''
+        }`,
+      )
+    }
+
+    // ---- 8: o deck do SR1, fechado pelo ciclo `sr1` ----
+    // O mesmo contrato do pitch do Kick-off, trocando o ciclo. A expectativa
+    // vem do cronograma e das travas, então o bloco não apodrece no dia em
+    // que o SR1 virar público.
+    const sr1Visivel = visiveis.includes('sr1')
+    for (const rota of ['/sr1', '/sr1/pdf']) {
+      const visitante = await fetch(`${BASE}${rota}`, { redirect: 'manual' })
+      conferir(
+        visitante.status === (sr1Visivel ? 200 : 404),
+        `${rota} para o visitante responde ${sr1Visivel ? '200 (sr1 liberado)' : '404 (sr1 oculto)'} — recebeu ${visitante.status}`,
+      )
+    }
+    const sr1Admin = await fetch(`${BASE}/sr1`, {
+      headers: { cookie: `${NOME_COOKIE_SESSAO}=${token}` },
+      redirect: 'manual',
+    })
+    conferir(sr1Admin.status === 200, `/sr1 para o admin responde 200 — recebeu ${sr1Admin.status}`)
+    const htmlDoSr1 = await sr1Admin.text()
+    conferir(
+      SLIDES_SR1.every((slide) => htmlDoSr1.includes(slide.titulo)),
+      'admin recebe todos os slides do SR1 no HTML do /sr1',
+    )
+    for (const caminho of ['/sr1/slide-01.png', '/sr1.pdf']) {
+      const estatico = await fetch(`${BASE}${caminho}`, { redirect: 'manual' })
+      conferir(
+        estatico.status === 404,
+        `${caminho} não é servido como estático — recebeu ${estatico.status}`,
+      )
+    }
+    if (!sr1Visivel) {
+      const home = await (await fetch(`${BASE}/`)).text()
+      conferir(
+        !home.includes('href="/sr1"'),
+        'a home não oferece o deck do SR1 enquanto o SR1 está oculto',
+      )
+    }
+    for (const slide of SLIDES_SR1) {
+      const textos = [slide.titulo, ...textoNaTelaSR1(slide.id)].filter(
+        (t) => t.length >= 20 && t.split(/\s+/).length >= 4,
+      )
+      const vazando = conteudos.filter((a) => textos.some((t) => a.texto.includes(t)))
+      conferir(
+        vazando.length === 0,
+        `bundle do cliente sem o texto do slide ${slide.numero} do SR1${
           vazando.length ? ` (encontrado em ${vazando.map((v) => v.caminho).join(', ')})` : ''
         }`,
       )

@@ -103,7 +103,7 @@ export async function TelaMeuResultado({ ctx }: PropsTela) {
         <p className="mt-3 text-xs text-apagado">
           {gerente.escopo === 'unidade'
             ? `A nota deste gerente é a nota da ${vinculoDe(dados, gerente)}, calculada pela régua do tipo dela.`
-            : `A nota deste gerente é a média das unidades do ${vinculoDe(dados, gerente)}. Suposição declarada, a validar com a planilha do cliente.`}
+            : `A nota deste gerente é a média das unidades do ${vinculoDe(dados, gerente)}. Essa conta é suposição nossa, ainda não conferida com a Secretaria.`}
         </p>
       </Painel>
 
@@ -117,12 +117,19 @@ export async function TelaMeuResultado({ ctx }: PropsTela) {
       ) : (
         <>
           <div id="alvo-res-score" className="mt-6">
-            <CartaoScore avaliacao={avaliacao} />
+            <CartaoScore avaliacao={avaliacao} virgula />
+            {/* Os RÓTULOS da faixa vêm da planilha; os PERCENTUAIS são nossos,
+                porque moram num decreto que a equipe ainda não tem (ADR-041).
+                O cartão mostra os dois lado a lado, então a tela diz qual é qual. */}
+            <p className="mt-2 text-xs text-apagado">
+              O percentual de pagamento é de teste. O valor real depende do Decreto nº
+              36.482/2023, que ainda não temos.
+            </p>
           </div>
 
           {'memoria' in avaliacao ? (
             <div id="alvo-res-memoria" className="mt-4">
-              <MemoriaDeCalculo avaliacao={avaliacao} />
+              <MemoriaDeCalculo avaliacao={avaliacao} virgula />
             </div>
           ) : (
             <Painel
@@ -137,13 +144,13 @@ export async function TelaMeuResultado({ ctx }: PropsTela) {
                     className="flex flex-wrap items-baseline justify-between gap-2 py-2"
                   >
                     <span>{dados.unidadePorId(item.unidadeId)?.nome ?? item.unidadeId}</span>
-                    <Num>{item.score.toFixed(2)}</Num>
+                    <Num>{item.score.toFixed(2).replace('.', ',')}</Num>
                   </li>
                 ))}
               </ul>
               <p className="numero mt-3 text-sm">
                 média das {avaliacao.porUnidade.length} unidades ={' '}
-                <strong>{avaliacao.score.toFixed(2)}</strong>
+                <strong>{avaliacao.score.toFixed(2).replace('.', ',')}</strong>
               </p>
             </Painel>
           )}
@@ -171,7 +178,7 @@ export async function TelaMeuResultado({ ctx }: PropsTela) {
                         style={{ width: `${largura}%` }}
                       />
                     </div>
-                    <Num className="text-sm">{item.score.toFixed(2)}</Num>
+                    <Num className="text-sm">{item.score.toFixed(2).replace('.', ',')}</Num>
                   </li>
                 )
               })}
@@ -181,7 +188,7 @@ export async function TelaMeuResultado({ ctx }: PropsTela) {
           <Painel
             alvo="res-contestar"
             titulo="Discorda da nota?" icone={MessageSquareWarning}
-            descricao="O pedido de revisão fica registrado e recebe resposta da SEAB por escrito."
+            descricao="O pedido de revisão fica registrado, com data, no histórico. Responder por escrito ainda não está no protótipo."
           >
             {podeContestar ? (
               /* Âncora de verdade, não `next/link`: uma navegação completa
@@ -194,9 +201,7 @@ export async function TelaMeuResultado({ ctx }: PropsTela) {
                 Abrir contestação
               </a>
             ) : (
-              <p className="text-sm text-apagado">
-                O pedido de revisão entra numa etapa mais adiante do projeto.
-              </p>
+              <p className="text-sm text-apagado">Este perfil não pede revisão de nota.</p>
             )}
           </Painel>
         </>

@@ -236,6 +236,18 @@ export default async function SistemaCompleto({
                 params={params}
               />
             </div>
+
+            {/* A escolha da escrita isolada (ver `sistema/estado.ts`), dita em
+                uma frase para quem navega sozinho: o que ele faz aqui não
+                aparece para o próximo avaliador, e dura só até fechar o
+                navegador (o diário vive num cookie de sessão, ADR-048). */}
+            <div className="mt-4">
+              <Aviso>
+                Protótipo com dados de teste. O que você lança ou pede aqui fica só na sua
+                sessão de teste, guardada neste navegador: ninguém mais vê, e some quando
+                você fecha o navegador.
+              </Aviso>
+            </div>
           </section>
 
           {/* SUMÁRIO, TELAS E PAPÉIS DIVIDEM ESTE CONTÊINER de propósito:

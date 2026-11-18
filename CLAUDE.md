@@ -12,12 +12,20 @@ Site do Projeto 6 da CESAR School (2026.2, Equipe 2). Duas camadas:
   artefato avaliado pelo professor e substitui o Google Site. `/registro` continua existindo
   como redirecionamento para `/#registro`.
 - **`/pitch`** — os dezessete slides do Kick-off, fechados pelo ciclo `ko`.
+- **`/sr1`** — os vinte e dois slides do SR1, na ordem da rubrica oficial (ADR-047), fechados
+  pelo ciclo `sr1`. `/ml` é a AV1 de machine learning, sem portão.
 - **`/sistema`** — MVP do cálculo da gratificação por desempenho da SESAU Recife.
 
 ## Regras que não se negociam
 
-1. **Nenhum dado real** de pessoa ou da SESAU entra no repositório, no seed ou em prompt de
-   IA. Tudo sintético. Há teste que falha se um CPF, e-mail ou telefone aparecer na base.
+1. **Dado de pessoa nunca entra. Dado institucional da SESAU entra só com autorização
+   registrada.** CPF, nome, matrícula, e-mail e telefone estão proibidos no repositório, no
+   seed e em prompt de IA, sem exceção: isso não é permissão que o cliente possa dar, é o
+   art. 20 da LGPD. Já a base de desempenho por unidade, que é dado institucional e não
+   identifica ninguém, vive em `ml/data/` com autorização da Secretaria (ADR-044). O seed de
+   `src/lib/seed/` continua **100% sintético**, e a autorização não se estende a ele.
+   Dois testes seguram a fronteira: um varre a base sintética, outro varre `ml/data/` inteiro,
+   linha a linha, atrás de CPF, e-mail, telefone formatado e coluna que identifique pessoa.
 2. **Datas só mudam em `src/lib/cronograma.ts`.** É a fonte única de verdade; header,
    releases, registro e checklist derivam dela.
 3. **Arquivos de `src/content/ciclos/` nunca contêm `'use client'`.** Um componente cliente
@@ -77,6 +85,8 @@ src/
 ├── components/
 │   ├── base/            botão, selo, marca, rodapé, cabeçalho, fluxo, faixa do admin
 │   ├── pitch/           o deck do Kick-off: slides no servidor, teclado no cliente
+│   ├── ml/              os slides da AV1 de machine learning e os gráficos em HTML
+│   ├── sr1/             os slides do SR1, no mesmo deck do Kick-off
 │   ├── registro/        topo, trilhas, cartão da semana, entrega da vez,
 │   │                    biblioteca de documentos e cronograma público
 │   ├── sistema/         primitivos, ícones, sanfona da tela, tutorial, perfis
@@ -91,6 +101,8 @@ src/
 │   ├── checklist.ts     status das evidências da matriz
 │   ├── travas.ts        travas de release versionadas: liberar um ciclo por commit
 │   ├── pitch.ts         fonte única do pitch: slides, tempos, quem fala, notas
+│   ├── apresentacao-ml.ts  o texto dos slides da AV1 de ML; os números vêm do JSON do caderno 07
+│   ├── apresentacao-sr1.ts o texto dos slides do SR1; as notas saem do motor, dos JSON e do cronograma
 │   ├── tutoriais.ts     o aprendizado guiado de cada perfil
 │   └── produto.ts       nome, problema, pergunta e objetivos do projeto
 └── lib/
@@ -99,6 +111,7 @@ src/
     ├── releases.ts      motor de releases (puro)
     ├── visao.ts         resolve admin, data simulada e ciclos visíveis
     ├── features.ts      tela → ciclo que a libera, e quais perfis a enxergam
+    ├── decks.ts         que apresentação o topo do site oferece hoje, e onde ela mora
     ├── admin/           sessão, senha, rate limit, guard
     ├── calculo/         motor da gratificação (puro) e tipos
     ├── config/          config store com drivers
@@ -113,8 +126,9 @@ supabase/
 
 ml/                      lente de machine learning — treina offline, o app lê o JSON
 ├── data/                a planilha de desempenho por unidade que os cadernos leem
-└── notebooks/           os seis cadernos, com todo o código; o 06 escreve
-                         src/content/ml/resultados.json
+└── notebooks/           os cadernos, com todo o código; o 06 escreve
+                         src/content/ml/resultados.json e o 07, os números
+                         dos slides da AV1 (src/content/ml/apresentacao.json)
 ```
 
 ## Onde os dados vivem
@@ -136,8 +150,8 @@ execução.
 | `npm test` | Vitest |
 | `npm run typecheck` | `tsc --noEmit` — quebra se um ciclo publicado estiver incompleto |
 | `npm run verificar-vazamento` | Prova que conteúdo futuro não vaza (exige `npm run build` antes) |
-| `npm run roteiro` | Regenera a seção slide a slide de `docs/pitch-kickoff.md` a partir de `pitch.ts` |
-| `npm run pitch-pdf` | Gera `public/pitch-kickoff.pdf` e as capturas de `docs/pitch/` a partir de `/pitch` (exige `npm run build` antes) |
+| `npm run roteiro` | Regenera a seção slide a slide de `docs/pitch-kickoff.md`, `docs/ml-av1.md` e `docs/pitch-sr1.md` a partir do conteúdo dos decks |
+| `npm run pitch-pdf` | Gera `docs/pitch-kickoff.pdf` e as capturas de `docs/pitch/` a partir de `/pitch`; com `-- ml`, `docs/ml-av1.pdf` e `docs/ml-av1/` a partir de `/ml`; com `-- sr1`, `docs/sr1.pdf` e `docs/sr1/` a partir de `/sr1` (exige `npm run build` antes) |
 | `npm run e2e` | Playwright |
 | `npm run testar-rls` | Políticas do schema guardado contra um Postgres real (exige `DATABASE_URL_TESTE`) |
 | `npm run semear` | Semeia a base sintética num Postgres com o schema aplicado (exige `DATABASE_URL`) |

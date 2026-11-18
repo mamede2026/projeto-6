@@ -68,6 +68,8 @@ export async function POST(requisicao: NextRequest) {
     return redirecionar(deVolta(dados.gerenteId, { erro: 'Indicador desconhecido.' }))
   }
 
+  // A contestação cai na cópia de quem a abriu, como o lançamento: o driver
+  // grava o diário dela no cookie.
   const resultado = await repositorio().abrirContestacao(
     {
       gerenteId: dados.gerenteId,

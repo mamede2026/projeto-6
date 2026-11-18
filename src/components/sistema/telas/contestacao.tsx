@@ -61,10 +61,23 @@ export async function TelaContestacao({ ctx }: PropsTela) {
         </div>
       ) : null}
 
+      {/* O que a tela NÃO faz, dito antes do formulário. A portaria (art. 9º)
+          dá 10 dias corridos da publicação para recorrer e 5 dias úteis para a
+          comissão responder. Nada disso está implementado ainda: o pedido entra
+          em qualquer mês fechado, a qualquer tempo, e ninguém responde por aqui. */}
+      <div className="mb-5">
+        <Aviso>
+          O prazo do art. 9º da portaria ainda não está no sistema. Pela portaria, o recurso
+          vai em até 10 dias corridos da publicação. Aqui o pedido entra em qualquer mês
+          fechado, a qualquer tempo. Responder por escrito também ainda não foi construído: as
+          respostas da lista são da base de teste.
+        </Aviso>
+      </div>
+
       <Painel
         alvo="cont-abrir"
         titulo="Pedir revisão da nota" icone={MessageSquarePlus}
-        descricao="O pedido não muda a nota na hora: ele abre uma análise, que fica registrada e recebe resposta por escrito."
+        descricao="O pedido não muda a nota na hora. Ele fica registrado, com data, na lista abaixo e no histórico. Neste protótipo você escolhe um gerente de exemplo, e o pedido fica só na sua sessão de teste."
       >
         <form action="/api/sistema/contestacao" method="post" className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-3">
@@ -140,6 +153,12 @@ export async function TelaContestacao({ ctx }: PropsTela) {
               className="mt-1 w-full border border-linha px-2 py-1.5 text-sm"
             />
             <p className="mt-1 text-xs text-apagado">Entre 20 e 1000 caracteres.</p>
+            {/* Requisito 6 da Atividade 2 de Direito (src/content/privacidade.ts):
+                o texto livre pode receber dado sensível sem querer. */}
+            <p className="mt-1 text-xs text-apagado">
+              Não escreva aqui dado de saúde, de filiação sindical, de religião ou de origem
+              racial. O motivo é lido por quem analisa a contestação.
+            </p>
           </div>
 
           <Botao type="submit" variante="primario" disabled={!podeAbrir}>

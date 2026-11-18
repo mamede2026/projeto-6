@@ -61,3 +61,6 @@ __pycache__/
 # versionada. A licença não permite redistribuir versão derivada e são ~45 MB.
 # Origem: https://dadosabertos.saude.gov.br/dataset/indicadores_desempenho_sisab
 ml/data/previne/
+
+# Worktrees dos agentes do Claude Code: cópias locais, nunca versionadas.
+/.claude/worktrees/

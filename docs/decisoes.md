@@ -1203,9 +1203,293 @@ saem, porque a base nova é um retrato de um ciclo, não uma série.
 
 **Consequência.** A classificação e a regressão têm métrica alta porque o resultado geral é
 uma soma ponderada das mesmas notas, e os cadernos dizem isso em vez de vender previsão. A
-limpeza achou seis linhas de NDI e SAE em que a planilha soma o indicador 3 com peso 80% em
-vez de 20%; elas saem da modelagem. O slide 14 do Kick-off deixou de ler o JSON e guarda os
-números que mostrou naquele dia, para não passar a contradizer a própria frase.
+limpeza achou seis linhas de NDI e SAE que seguem outra conta: o resultado lançado é a soma dos
+pontos dividida por 1,7, e em cinco delas a planilha soma o indicador 3 com peso 80% em vez de
+20% (caderno 07, `linhas_fora_da_regra`); elas saem da modelagem. O slide 14 do Kick-off
+deixou de ler o JSON e guarda os números que mostrou naquele dia, para não passar a
+contradizer a própria frase.
 
 **O que se perdeu.** O vínculo com `src/lib/seed/`: o cálculo do app e a lente de ML agora
 falam de bases diferentes.
+
+## ADR-044 · Dado institucional da SESAU entra com autorização; dado de pessoa não entra nunca
+
+**Contexto.** A regra 1 da casa dizia "nenhum dado real de pessoa **ou da SESAU**", e foi
+escrita quando a equipe não tinha acesso a nada e precisava de uma linha simples de recusar.
+Depois a Secretaria enviou a planilha anonimizada, a lente de ML passou a trabalhar sobre a
+base de desempenho por unidade (ADR-043), e o arquivo foi para `ml/data/`. A regra e o
+repositório passaram a discordar, e uma regra que o próprio repositório desobedece deixa de
+ser regra: o próximo agente apagaria o arquivo achando que corrigia uma violação.
+
+**Decisão.** Separar as duas coisas que a regra tratava como uma. Dado que identifica pessoa
+(CPF, nome, matrícula, e-mail, telefone) continua proibido em qualquer lugar, e isso não é
+negociável com o cliente porque não depende dele: é o art. 20 da LGPD. Dado institucional
+(unidade, distrito, indicador, número) entra mediante autorização da Secretaria, que foi dada
+e está registrada aqui.
+
+**Consequência.** O seed de `src/lib/seed/` continua sintético, porque ele alimenta o site
+público e a autorização não se estende a ele. A fronteira nova ganhou teste próprio em
+`src/lib/dados-do-cliente.test.ts`, que varre `ml/data/` inteiro linha a linha: 825 mil linhas,
+cerca de cinco segundos no `npm test`. É caro para um teste e barato para a única coisa deste
+repositório que não pode falhar em silêncio.
+
+**O que se perdeu.** O `npm test` ficou cinco segundos mais lento, e a regra 1 deixou de caber
+em duas linhas. Em troca, ela passou a descrever o que o repositório realmente faz. A primeira
+versão do teste procurava telefone com um padrão frouxo e acusou 824.782 das 825.029 linhas,
+porque num CSV de números quase toda coluna decimal casa: padrão que acusa tudo não acusa nada.
+Os padrões ficaram estreitos, e o reforço veio do cabeçalho, que reprova o arquivo por uma
+coluna chamada "nome" mesmo que nenhuma linha case.
+
+## ADR-045 · O SR1 ganhou deck próprio, e o site passou a escolher a apresentação do marco
+
+**Contexto.** O único deck do projeto era o do Kick-off, em `/pitch`, e tudo em volta sabia
+disso: o atalho do topo, o bloco "a entrega da vez" e o script do PDF. Dez dias depois do
+Kick-off o atalho sumia, como planejado, e o site passava a não oferecer apresentação nenhuma
+justamente na semana de preparar a próxima. O roteiro do SR1 existia só como tabela num
+documento da Semana 6, o que a ADR-040 já tinha tirado do site para o Kick-off (material de
+preparação não é entrega). E o tempo do SR1 não está confirmado: a diretriz escrita do
+Kick-off dizia cinco minutos, e o professor liberou dez.
+
+**Decisão.** O SR1 tem o mesmo desenho do Kick-off e da AV1 de ML: o texto mora em
+`src/content/apresentacao-sr1.ts`, os slides em `src/components/sr1/slides.tsx`, a rota `/sr1`
+e o PDF `/sr1/pdf` são fechados pelo ciclo `sr1`, e `npm run roteiro` gera
+`docs/pitch-sr1.md`. Três coisas são novas:
+
+1. **Duas versões no mesmo deck.** `/sr1` fecha em 9:00; `/sr1?versao=curta` fecha em 4:55 com
+   os slides marcados com `curto`, e cada um diz só as primeiras linhas da fala. Não é outro
+   arquivo: trocar de versão na hora não pode depender de alguém lembrar de atualizar dois.
+2. **Nenhum número digitado.** A nota de maio pela v2, a de maio pela v3 e a de junho pela v3
+   saem do motor de cálculo na hora de montar o slide, inclusive dentro da fala. O funil da
+   planilha vem do JSON do caderno 07, os modelos do caderno 06, as contagens de segurança de
+   `CONTAGENS_PITCH`, conferidas contra `docs/seguranca.md`.
+3. **Os sete falam.** No Kick-off a fala era só de quem estava desde agosto. Agora o teste
+   exige a equipe inteira, entre 30 e 130 segundos por pessoa, nas duas versões, e que a fala
+   de cada slide caiba no tempo dele a 2,6 palavras por segundo.
+
+O atalho do topo e a entrega da vez passam a perguntar a `src/lib/decks.ts` qual deck
+oferecer: o do marco mais recente que o visitante já vê, dentro da mesma janela de dez dias.
+
+**Consequência.** Em dezembro, o SR2 entra com uma linha em `DECKS_DOS_MARCOS` e um arquivo de
+conteúdo. O deck presta contas dos três compromissos do Kick-off com o estado real, inclusive o
+que não foi feito, e a correção de rota tem slide próprio.
+
+**O que se perdeu.** O slide da demonstração continua mostrando a interface do sistema com
+ponto decimal (70.00) enquanto o resto do deck escreve 70,00. É a tela real, e trocar a
+formatação dela é trabalho das telas, não do deck.
+
+## ADR-046 · Para o SR1: as oito telas no ar, cada visitante escreve na própria cópia, e junho fecha pela v3
+
+**Contexto.** A banca do SR1 pode navegar o sistema sozinha, e três coisas atrapalhavam. Quatro
+das oito telas (trilha, gestão, analytics e contestação) já existiam e estavam testadas, mas só
+abririam entre a Semana 7 e a 11. A escrita do protótipo morava em variáveis de módulo em
+`src/lib/sistema/estado.ts`: o lançamento de um avaliador aparecia na tela do outro, e um avanço
+de ciclo mudava o mês de todo mundo. E nenhuma nota pela regra v3 existia para quem visita: junho,
+o único mês da v3, estava em lançamento aberto, e a base só calcula nota de mês fechado.
+
+**Decisão.**
+
+1. **As telas, não os registros.** O `ciclo` das quatro telas passou para `s6` em
+   `src/lib/features.ts`. Os registros de s7 em diante continuam no calendário: abri-los por
+   trava ou vitrine publicaria semanas futuras escritas no passado. O teste de ponta a ponta do
+   portão passou a medir na véspera da última leva de telas, calculada do cronograma, porque
+   hoje nenhuma rota de tela está fechada.
+2. **Uma cópia por visitante.** O cookie `prumo_visitante` (um `crypto.randomUUID()`, httpOnly,
+   sem assinatura, porque não dá privilégio nenhum) identifica a cópia. `estadoDo(visitante)`
+   soma a base congelada à cópia dele, que guarda lançamentos, eventos, estados de ciclo,
+   avaliações e contestações. Só as três rotas de escrita criam o cookie; ler não cria cópia.
+   Tetos: 100 visitantes (sai a cópia usada há mais tempo) e 200 registros por cópia. O avanço
+   de ciclo continua exigindo sessão de admin e fica na cópia de quem avançou. O contrato de
+   `src/lib/dados/` não mudou. A tela diz, no topo do sistema, que o que se lança ali fica só
+   na sessão de teste.
+3. **Junho fechado, julho aberto.** Julho entrou no FIM da lista de meses do gerador, e a onda
+   sazonal ficou fixa em seis meses em vez de seguir o tamanho da lista: assim janeiro a maio
+   saem idênticos, lançamento a lançamento, e há teste que fixa maio das doze unidades. Junho
+   passou a ser gerado como mês fechado pela v3. O slide 14 do Kick-off, que contava os meses da
+   base, ficou congelado em seis (`MESES_NA_BASE_NO_KICKOFF`), como o modelo do mesmo slide.
+4. **A recusa entra no histórico.** A tela dizia que uma tentativa fora do prazo ficava
+   registrada, e não ficava. Agora existe o evento `lancamento_recusado`, com teste.
+
+**Consequência.** A banca vê as oito telas, uma nota pela v3 (junho da USF Canário) sem
+depender de ninguém, e a demonstração de quem apresenta não muda a tela de quem assiste. A
+descrição da v3 passou de "conferida contra a planilha" para "escrita a partir das fórmulas":
+nenhuma linha real foi recalculada pelo motor ainda, e dizer "conferida" seria antecipar o
+compromisso que o Kick-off prometeu e não cumpriu.
+
+**O que se perdeu.** A cópia vive na memória de uma instância. Na Vercel, duas requisições em
+instâncias diferentes podem não enxergar a mesma cópia: já era assim antes, só que agora a perda
+é de um visitante e não de todos. O enum `tipo_evento` do schema guardado em
+`supabase/migrations/` não tem `lancamento_recusado`, mais uma divergência declarada de um
+schema que continua desligado do app. E junho mudou de números: ele nunca tinha sido publicado,
+mas quem guardou o 70 da auditoria de 24/09 vai encontrar 75.
+
+## ADR-047 · As orientações do SR1 chegaram, e o deck passou a seguir a rubrica
+
+**Contexto.** Em 28/09 chegaram as orientações oficiais do SR1. A apresentação tem até 15
+minutos e é interrompida no limite. Os slides vão em PPT ou PDF, salvos no Drive da equipe, e
+cada um é numerado como atual/total. São sete critérios com pontos: imersão 1,75, ideação 1,75,
+proposta de solução 2, metodologia e processo 1,5, planejado x realizado 1, pontos fortes e
+melhorias 0,5 e apresentação 1,5. Cada critério traz a lista do que mostrar. O deck de 24/09
+(ADR-045) foi montado antes delas: 16 slides em 9:00. De propósito, ele deixava de fora
+personas, SWOT, ideação e wireframes, porque o Kick-off já os tinha mostrado. Também não tinha
+metodologia, papéis, ferramentas, a organização do site e do Drive nem o percentual de avanço.
+Pela rubrica, essas ausências custavam ponto em quatro dos seis critérios de conteúdo.
+
+**Decisão.**
+
+1. **A ordem da rubrica.** São 22 slides em seis partes, entre a abertura e o encerramento.
+   Cada slide leva a parte a que responde (`parte`), e o rodapé diz qual, com o número do
+   critério ("1 · imersão no problema"). O slide 2 é o mapa, com os slides de cada parte. Um
+   teste confere que as seis partes existem, em ordem, e que cada item da rubrica tem slide.
+2. **Autocontido.** O teto de palavras na tela subiu de 70 para 90. O PDF vai para o Drive e é
+   lido sem a fala, e as orientações pedem slides "claros, completos e autocontidos".
+3. **Nenhum número digitado, também nas partes novas.** O planejado x realizado sai do
+   cronograma e do checklist: 39 de 43 entregas até o SR1, com os responsáveis. O avanço sai do
+   backlog. A matriz CSD de 25/09 virou dado (`CSD_EM_25_09`, em `analises.ts`), e o documento
+   de síntese da pesquisa passou a lê-la de lá. Quando a fala diz "cinco fontes" ou "oito
+   alternativas", o número vem da fonte, por extenso.
+4. **A versão de cinco minutos saiu.** Ela existia porque o tempo não estava confirmado. Agora
+   está, e o deck fecha em 11:50 de fala, com 3:10 de margem para as trocas de quem fala, a
+   demonstração ao vivo e o nervoso do dia (11:59 e 3:01 depois da revisão de 03/10, item 9).
+   `?versao=curta` cai no deck inteiro.
+5. **Legível numa chamada de vídeo.** O SR1 herdou a escala compacta da AV1 de ML. Os ordinais
+   saíram da cor da hairline (1,8:1) para o cinza de texto. O rótulo passou a 13px, o rodapé a
+   14px e a posição atual/total a 16px, em cor de texto. O traço dos wireframes passou a usar o
+   cinza de texto, e o slide cresce em telas de 1500 e 1800 pixels.
+6. **A fala só diz o que o repositório sustenta.** Os wireframes foram desenhados depois das
+   primeiras telas, então a fala diz que cada desenho "corresponde" a uma tela, e não que
+   "virou" uma. A regra é dado com versão, mas muda por código, e a fala não diz que ela se
+   ajusta pela tela. A sessão de ideação está registrada só como roteiro e resultado, o SCAMPER
+   não foi usado, a pesquisa não tem entrevista e as personas vieram do caso. Os quatro pontos
+   estão nas respostas preparadas, e dois deles estão no balanço como pontos de melhoria.
+7. **Dois defeitos do site que a banca veria.** O link da pasta do Drive nunca aparecia, porque
+   `TopoRegistro`, o único componente que o mostrava, não é montado em lugar nenhum. Agora a
+   seção de documentos mostra o link quando `NEXT_PUBLIC_DRIVE_URL` existe. O imprensado
+   aparecia no cronograma público como "a fazer" e "a definir", e agora aparece como pausa.
+8. **Revisado como banca antes de sair.** Uma leitura do PDF como quem avalia, critério a
+   critério, achou afirmações que o repositório não sustenta, e elas mudaram. O cartão da
+   demonstração de reserva dizia "recebe 80% da gratificação", e o percentual é suposição
+   nossa até termos o Decreto 36.482/2023: no slide, a linha passou a dizer isso. "A regra como
+   dado" saiu de alcançado para em parte, porque a versão 3 pediu código novo no motor. A
+   equipe tem seis frentes com dono, não sete: o Kerry apoia a pesquisa. A ideação mostra o que
+   dá para abrir (o roteiro e as oito alternativas), e não as 18 ideias que o roteiro previa. O
+   planejado x realizado ganhou o dono e a data nova de cada compromisso, e o que está em
+   andamento ganhou dono. A matriz CSD do Kick-off voltou à versão de 12/09, que tinha sido
+   reescrita no lugar; a de 25/09 continua em `CSD_EM_25_09`. O slide 8 e o 19 ganharam cinco
+   segundos cada, e o deck passou de 11:35 para 11:50 de fala.
+9. **A segunda revisão, de 03/10, véspera do SR1.** Quatro revisões independentes leram o PDF
+   como a banca, um critério por vez, e cada achado foi conferido no repositório antes de
+   entrar. O slide 3 diz que as seis unidades seguem "uma conta que a portaria não traz", e não
+   que erram, porque ainda não sabemos se é erro. Cada objetivo do slide 8 diz o próximo passo,
+   e o escopo usa "dado pessoal real", o mesmo termo da LGPD do slide 11. Cada técnica do slide
+   9 diz como funciona. A aderência ganhou o porquê no slide 10. O cartão de Direito ganhou a
+   base legal e a Atividade 2. O slide 15 passou a ter o mesmo trio do benchmarking do slide 7:
+   conta aberta, regra com versão e registro de quem mudou. Os wireframes dizem a decisão que
+   cada um fixa, e as barras deixaram de sumir no escuro. O slide 19 diz, calculado, quem fica
+   fora da tabela e por quê. O slide 20 compara os 55% com os 61% que o plano pedia. O
+   fechamento diz os próximos passos com data. Nomes próprios e siglas voltaram à forma certa,
+   e o sistema passou a escrever número com vírgula. O slide 13 passou para o João Pedro, que
+   segue no 14, e o João Henrique ganha o tempo de abrir o sistema. O deck foi de 11:50 para
+   11:59 de fala. A mesma revisão achou o defeito da demonstração ao vivo (ADR-048).
+
+**Consequência.** Cada critério da rubrica tem slide próprio, e a banca confere a cobertura
+pelo rodapé. A relação entre problema, solução e plano, que as orientações pedem, está dita em
+uma linha no fechamento. O percentual de avanço aparece de três jeitos, cada um com a conta:
+91% do que o cronograma pedia até hoje, 55% das entregas do semestre, na metade do calendário, e 65%
+das histórias do backlog no ar.
+
+**O que se perdeu.** O deck ficou mais denso, e a demonstração ao vivo encurtou para 70
+segundos. O balanço diz em público que as entregas até o SR1 estão registradas em nome de poucas
+pessoas. Isso é verdade no checklist, e o tratamento está no mesmo slide. Algumas pendências só a
+equipe resolve, e continuam abertas: salvar o PDF no Drive e preencher a variável na Vercel,
+publicar o registro da sessão de ideação, validar os registros das semanas 5 e 6 e ensaiar com
+cronômetro.
+
+## ADR-048 · A escrita do protótipo vai num diário assinado no cookie, porque na Vercel a rota e a página são funções diferentes
+
+**Contexto.** Desde 25/09 (ADR-046) cada visitante escreve numa cópia própria, guardada num `Map`
+do módulo `src/lib/sistema/estado.ts` e achada por um id aleatório no cookie. A ADR-046 já
+admitia que, em serverless, a cópia "pode nem valer entre duas requisições". Na revisão de
+03/10, véspera do SR1, ficou claro que o caminho da demonstração ao vivo nunca tinha rodado em
+produção. O build da Vercel (`vercel build`, em `.vercel/output/functions`) mostra o porquê: as
+rotas `/api/sistema/lancamento`, `/api/sistema/ciclo` e `/api/sistema/contestacao` apontam para
+um grupo de funções, e a página `/sistema`, para outro. A memória de um não chega ao outro.
+
+Reproduzimos com dois `next start`, um só para `/api` e outro só para as páginas, atrás de um
+proxy. A versão que estava em produção (8a36db8) falha os dois testes da demonstração: aparece
+"Lançamento registrado.", e o campo volta vazio (esperado 170, recebido vazio). Os testes de
+ponta a ponta não pegavam porque `next start` é um processo só.
+
+**Decisão.** A cópia passa a ser refeita a cada requisição a partir de um **diário**: a lista, em
+ordem, das escritas que mudaram a cópia (lançar, avançar etapa e contestar, inclusive a
+tentativa recusada que fica na trilha), cada uma com a hora gravada. O diário viaja no cookie
+`prumo_diario` do próprio navegador (`src/lib/sistema/visitante.ts`).
+
+1. **Assinado** com HMAC-SHA256, com o segredo do painel numa chave própria (`:diario`). Um
+   token de um não serve no lugar do outro, e um diário editado à mão volta para a base pura.
+   Isso importa porque a credencial de avançar etapa fica na rota, e um diário forjado seria
+   escrita pulando a rota.
+2. **Compactado** (deflate) e **validado** por esquema, com teto de descompactação.
+3. **Com teto** de 3.800 caracteres. A demonstração inteira usa menos da metade. Quando o diário
+   não cabe mais, a escrita é recusada com aviso, nunca perdida calada.
+4. **Sem prazo**: é cookie de sessão. A cópia some quando o navegador fecha.
+5. **Mesma cópia em qualquer lugar.** O motor é função pura e a hora vem do diário, então refazer
+   dá sempre a mesma cópia, com os mesmos ids. `estadoDo(sessao)` substitui
+   `estadoDo(visitante)`, e as telas não mudaram: o contrato de `RepositorioDados` é o mesmo.
+
+**Como se prova.** Um teste refaz a demonstração do SR1 só com o diário, como faz a página na
+Vercel, e compara a cópia, os ids e as notas. A suíte de ponta a ponta passou inteira com rotas e
+páginas em processos separados atrás do proxy. E na própria Vercel, com curl de uma sandbox: o
+mesmo lançamento (170 de 200, USF Canário, julho), seguido de cinco leituras da tela, voltou
+vazio nas cinco na produção de 8a36db8 e com 170 nas cinco no preview desta mudança.
+
+**Consequência.** Qualquer instância de qualquer função enxerga a mesma cópia, e a demonstração do
+slide 14 não depende de sorte. O "pode não valer entre requisições" da ADR-046 deixa de valer, e
+o teto de 100 visitantes em memória saiu: não há mais memória por visitante no servidor.
+
+**O que se perdeu.** O cookie cresce com o que se escreve, e uma sessão longa chega ao teto. Duas
+abas escrevendo ao mesmo tempo podem perder uma escrita, e vale a última. O diário depende de
+`ADMIN_COOKIE_SECRET`, que produção já tem; sem o segredo, a escrita não grava. Durar de verdade,
+para todo mundo, continua sendo papel do banco (ADR-011 e ADR-012).
+
+## ADR-049 · O que o sistema fazia sem história virou história, fora da conta das 26
+
+**Contexto.** O backlog da Semana 4 tem 26 histórias, e no SR1 o deck mostrou 17 delas no ar. O
+sistema faz mais do que as 26 pedem: a SEAB lançando por uma unidade atrasada, o ranking com a
+opção de esconder os nomes, os sinais de analytics, o tutorial guiado, o tema claro. Quase tudo
+isso já estava no código em 16/08, a data mais antiga que o Git guarda, e nenhuma história
+registrava. Quem olhava só o backlog via um sistema menor do que o que está no ar.
+
+**Decisão.** Um documento novo no SR1, "Histórias que surgiram na construção", escrito em 03/10
+e publicado depois da banca. São 12 histórias do produto e 2 do protótipo, no formato da Semana
+4. Cada uma diz de onde veio, com a data ou a ADR que se confere, e onde se confere na tela.
+Três regras:
+
+1. **Só o que existe e se confere na tela.** Estado "no ar" ou "em parte", e visível para quem
+   visita, sem sessão de admin. O que falta é história do backlog, com MoSCoW, e não entra aqui.
+2. **Fora da conta das 26.** `BACKLOG` (s6) continua o retrato de 25/09. O deck do SR1 conta a
+   partir dele e não importa o arquivo do ciclo sr1, e `sr1.test.ts` confere isso: nenhuma
+   história publicada depois da banca muda um número que a banca viu.
+3. **Nenhuma toma o lugar das 9 que faltam.** Abrir o mês, definir a janela, cadastrar a régua e
+   a regra pela tela, responder à contestação, a revisão do distrito e o aviso antes do envio
+   continuam no backlog. Partir uma delas para contar a parte pronta como história nova seria
+   inflar o número. Por isso a régua que já se lê na tela não virou história: ela é a metade
+   "só leitura" de quatro histórias que o backlog já tem.
+
+**A revisão antes do merge.** Um revisor adversarial conferiu cada história contra o código e o
+histórico do Git, e mudou a lista. Saíram duas: o funil por unidade, porque em 16/08 a história
+dos totais por distrito pedia "o funil do ciclo"; e a recusa de lançamento com rastro, que só
+aparece com sessão de admin e cuja recusa é parte da janela, que falta. Entraram duas que
+estavam esquecidas: a SEAB conferindo a nota de qualquer gerente e abrindo contestação em nome
+dele. Uma terceira que ele achou, os avisos da conta no painel da gestão, ficou de fora pelo
+mesmo critério: a base de teste não tem nota com aviso, e ninguém confere na tela.
+Quatro passaram para "em parte": esconder os nomes (o tipo fica, e a unidade única do tipo se
+reconhece), o recorte do distrital, os números que parecem erro (só os 12 primeiros, dos meses
+mais antigos) e os modelos (o agrupamento mostra a referência sem o valor). E três origens
+ganharam a data certa.
+
+**Sem MoSCoW.** Elas já estão construídas, e prioridade serve para decidir o que construir.
+Entram na ordem das sprints junto com o resto, quando a Semana 7 reordenar o backlog.
+
+**Consequência.** O avanço do backlog continua 17 de 26, o número do SR1, e o deck e o PDF não
+mudaram. A data "16/08" que aparece em várias linhas é a do commit mais antigo que o Git guarda:
+a função pode ser mais velha, nunca mais nova.

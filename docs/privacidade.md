@@ -7,9 +7,17 @@ do que ele faz **hoje**, como MVP acadêmico. A diferença entre os dois é gran
 explicitada em cada seção.
 
 > **Estado atual do MVP:** o sistema roda com **dados 100% sintéticos**, gerados por script
-> com semente fixa (`src/lib/seed/`). Nenhum dado real de pessoa ou da SESAU entra no
-> repositório, no seed ou em prompt de IA. Há teste automatizado que recusa CPF, e-mail,
-> telefone ou matrícula na base (`src/lib/seed/seed.test.ts`).
+> com semente fixa (`src/lib/seed/`). Há teste que recusa CPF, e-mail, telefone ou matrícula
+> nessa base (`src/lib/seed/seed.test.ts`).
+>
+> **Dado de pessoa nunca entra:** nem no repositório, nem no seed, nem em prompt de IA.
+> **Dado institucional da SESAU entra com autorização registrada (ADR-044).** A base de
+> desempenho por unidade está em `ml/data/base nova completa.csv`, com autorização da
+> Secretaria, e só os cadernos da lente de ML a leem. O teste
+> `src/lib/dados-do-cliente.test.ts` varre `ml/data/` inteiro, linha a linha, atrás de CPF,
+> e-mail, telefone e coluna que identifique pessoa. A autorização não se estende ao seed.
+> O risco que esse teste não pega, a identificação indireta, está na seção
+> [Identificação indireta na base da SESAU](#identificação-indireta-na-base-da-sesau).
 
 ## Dados que o sistema trataria em produção
 
@@ -21,8 +29,11 @@ explicitada em cada seção.
 | Autoria de lançamento | Quem informou cada valor, quando | Servidor da área técnica | Rastreabilidade e responsabilização |
 | Contestação | Motivo apresentado, resposta da comissão | Servidor avaliado | Devido processo |
 
-**Não são tratados**: dados sensíveis (art. 5º, II da LGPD), dados de pacientes, dados
-bancários ou valores de folha. O sistema calcula o **percentual devido**; a folha é outro
+**Não são tratados**: dados de pacientes, dados bancários ou valores de folha. **Não há campo
+para dado sensível** (art. 5º, II da LGPD), mas o texto livre da contestação pode receber um
+sem querer, e por isso o formulário avisa para não escrever. A Atividade 2 de Direito, na
+seção [Atividade 2 de Direito](#atividade-2-de-direito-requisitos-de-privacy-by-design),
+mostra que dado sensível também aparece por inferência, e trata cada caso. O sistema calcula o **percentual devido**; a folha é outro
 sistema, e isso está explicitamente fora do escopo.
 
 ## Base legal
@@ -95,6 +106,84 @@ não há transferência internacional de dados pessoais hoje. **Em produção, i
 requisito de contratação**: hospedagem em região brasileira ou avaliação formal de
 transferência (arts. 33 a 36).
 
+Uma ressalva, que depende da seção seguinte: se alguma linha de `ml/data/` for tratada como
+dado pessoal, esta conclusão muda. O repositório é público e fica no GitHub, fora do Brasil.
+
+## Identificação indireta na base da SESAU
+
+**O que está no arquivo.** `ml/data/base nova completa.csv` tem 244 linhas e 260 colunas. São
+48 linhas de distrito (seis por distrito, oito distritos) e 196 de unidade. Não há nome de
+unidade nem de pessoa. Cada linha se identifica por duas colunas: o tipo de unidade, com o
+porte (USF 1 a USF 8, MAC 1 a MAC 4, CAPS II ou III, CAPS III 24h), e o distrito sanitário.
+
+**A conta.** Recontada em 25/09, só lendo o arquivo:
+
+| Recorte | Combinações tipo × distrito | Com uma linha só |
+| --- | --- | --- |
+| Base inteira | 90 | 39 |
+| Só as linhas de unidade | 82 | 39 |
+| Só unidade, sem o porte | 43 | 19 |
+
+As oito combinações de distrito têm seis linhas cada, então as 39 únicas são todas de
+unidade. Tirar o porte (USF, MAC e CAPS sem número) reduz o problema, mas não o resolve.
+
+**O risco.** Uma combinação única aponta uma unidade: na base, ela é a única daquele tipo
+naquele distrito. Cada unidade tem um gerente, e é ele quem recebe a gratificação pela nota dela.
+Quem conhece a rede chega à pessoa sem precisar do nome. Pelo art. 5º, I da LGPD, dado
+pessoal é o que se refere a pessoa identificada **ou identificável**. Então as 39 linhas
+podem ser dado pessoal por identificação indireta, mesmo sem CPF nem nome. As colunas de
+contagem ("total avaliado", "quantidade atendida") também podem ajudar a cruzar a linha com
+outra fonte.
+
+**O que o teste não pega.** `src/lib/dados-do-cliente.test.ts` procura identificador direto:
+CPF, e-mail, telefone e coluna com nome de pessoa. Identificação indireta não aparece em
+nenhuma linha isolada. Ela só aparece contando combinações, como aqui.
+
+**O que falta.** A ADR-044 registra que a Secretaria autorizou a base em `ml/data/`. Não há,
+no repositório, documento da Secretaria que cubra publicar essa base num repositório
+público e nos slides de `/ml`. Falta essa autorização por escrito, com a referência
+guardada junto da ADR.
+
+**As opções.** A decisão é da equipe com a Secretaria.
+
+1. **Generalizar.** Juntar as combinações raras antes de publicar: tirar o porte, agrupar
+   os tipos com poucas unidades, ou retirar o distrito dessas linhas. Recontar até nenhuma
+   combinação ficar com uma linha só. Custo: os cadernos rodam de novo, e os números de
+   `/ml` e dos JSONs em `src/content/ml/` mudam.
+2. **Justificar.** Manter a base como está, com a autorização por escrito dizendo que a
+   Secretaria sabe que o repositório é público e que a combinação tipo × distrito pode
+   apontar a unidade. A justificativa precisa dizer a base legal da publicação.
+
+Até a decisão, o risco fica declarado aqui.
+
+## Atividade 2 de Direito: requisitos de privacy by design
+
+A Atividade 2 da disciplina de Direito (30% da AV1), entregue em 28/09, levantou os
+requisitos de privacidade da plataforma antes do código, com o método de privacy by design:
+16 categorias de dado pessoal, 15 riscos e, para cada risco, o requisito que o trata, o
+princípio que o sustenta e um critério de verificação testável. O catálogo inteiro está
+transcrito em `src/content/privacidade.ts` e aparece no site como documento do SR1
+(`#doc-sr1-privacy-by-design`), com uma coluna que o PDF não tem: onde cada requisito está
+hoje no código.
+
+O que ela acrescenta a este documento:
+
+- **Base legal:** art. 7º, III **lido com o art. 23** (tratamento pelo Poder Público), e o
+  art. 11, II, "b" para dado sensível. O encarregado é o canal com titulares e ANPD (arts.
+  23, III e 41), e o compartilhamento entre órgãos segue o art. 26.
+- **Sensível por inferência** (art. 11, § 1º): a nota é dado comum, mas o motivo registrado
+  (licença médica, falta por dia de greve) revela saúde ou filiação sindical.
+- **Transparência:** o Tema 483 do STF permite divulgar nome e remuneração do servidor, mas
+  não alcança as notas individuais, de acesso restrito (art. 31 da LAI).
+- **Backlog de privacidade:** oito itens. Um já está feito, o teste que garante que nenhum
+  modelo recebe identificador de gestor e que o motor não lê saída de modelo
+  (`src/lib/calculo/fronteira.test.ts`). O aviso contra dado sensível no formulário da
+  contestação também entrou.
+
+**Correção sobre o PDF.** A atividade cita a Portaria Conjunta SESAU nº 05/2023 como norma da
+política. Ela foi revogada pela Portaria Conjunta nº 001/2024 (art. 12), que é a vigente e a
+que o projeto usa. O site e este documento citam a vigente.
+
 ## Pendências honestas
 
 1. Falta validar com a SESAU o prazo de retenção e o inventário de dados reais.
@@ -102,3 +191,6 @@ transferência (arts. 33 a 36).
    produção, ainda não construídos.
 3. Não há registro de operações de tratamento (art. 37) formalizado; a trilha de auditoria
    é a base sobre a qual ele seria montado.
+4. Falta a autorização por escrito da Secretaria para publicar `ml/data/` num repositório
+   público, e a decisão entre generalizar e justificar as 39 combinações únicas (seção
+   acima).

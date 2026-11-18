@@ -22,9 +22,17 @@ import { TimelineCiclos, TrilhaMarcos } from '@/components/registro/trilhas'
 import { ExplicacaoDosPerfis } from '@/components/sistema/perfis'
 import { carregarCiclos, temRegistro } from '@/content/ciclos/registro'
 import { EQUIPE, SELO_PAPEIS } from '@/content/equipe'
-import { INSTITUICAO, O_QUE_E, PERGUNTA_DO_PROJETO, PROBLEMA } from '@/content/produto'
+import {
+  CLIENTE,
+  INSTITUICAO,
+  O_QUE_E,
+  PERGUNTA_DO_PROJETO,
+  PROBLEMA,
+  URL_DRIVE,
+} from '@/content/produto'
 import { cicloPorId } from '@/lib/cronograma'
-import { cicloCorrente, pitchEmDestaque, proximoMarco } from '@/lib/releases'
+import { deckEmDestaque } from '@/lib/decks'
+import { cicloCorrente, proximoMarco } from '@/lib/releases'
 import { formatarBR } from '@/lib/datas'
 import { ehSemanaCorrente } from '@/lib/releases'
 import { featuresLiberadas } from '@/lib/sistema'
@@ -139,6 +147,32 @@ export default async function Pagina() {
           </p>
         </section>
 
+        {/* O vídeo do antes e depois da Sprint 2 (ADR-050), com a voz da equipe.
+            Segue o portão da semana que o produziu: enquanto a s8 não está
+            liberada, o bloco não sai no HTML. Fica em /public, servido pelo
+            próprio site (a CSP é default-src 'self'), e preload="none" para
+            não baixar 15 MB de quem só passa pela página. */}
+        {podeVer(visao, 's8') ? (
+          <section className="bloco revelar" aria-labelledby="titulo-video">
+            <h2 id="titulo-video" className="rotulo">
+              antes e depois da sprint 2
+            </h2>
+            <p className="prosa mt-5 max-w-[46rem] text-sm lowercase">
+              cinco mudanças no sistema, mostradas tela a tela e contadas por quem as fez. todas
+              já estão implementadas.
+            </p>
+            <video
+              controls
+              preload="none"
+              playsInline
+              poster="/video/sprint-2-antes-e-depois.jpg"
+              className="mt-6 aspect-video w-full border border-linha"
+            >
+              <source src="/video/sprint-2-antes-e-depois.mp4" type="video/mp4" />
+            </video>
+          </section>
+        ) : null}
+
         {/* A entrega da vez vem ANTES do índice: a primeira pergunta de quem
             abre o site no dia é "o que é hoje", não "o que tem aqui". */}
         {marco ? (
@@ -152,8 +186,9 @@ export default async function Pagina() {
             // davam o mesmo resultado. Na segunda-feira seguinte o próximo
             // marco virou o SR1, o topo continuou oferecendo a apresentação por
             // mais dez dias e este bloco parou: dois lugares respondendo
-            // diferente à mesma pergunta. A janela mora em `pitchEmDestaque`.
-            slidesLiberados={podeVer(visao, 'ko') && pitchEmDestaque(visao.hoje)}
+            // diferente à mesma pergunta. A janela mora em `deckEmDestaque`,
+            // que desde o SR1 escolhe também QUAL deck oferecer.
+            deck={deckEmDestaque(visao.hoje, (ciclo) => podeVer(visao, ciclo))}
           />
         ) : null}
 
@@ -224,6 +259,15 @@ export default async function Pagina() {
               <p key={paragrafo}>{paragrafo}</p>
             ))}
           </div>
+          {/* O cliente com nome. O checklist do SR1 pede "problema e pergunta
+              publicados, com o nome do cliente", e a página só dizia "a
+              prefeitura do Recife". Hairline e rótulo, sem cor nova. */}
+          <dl className="prosa mt-5 grid gap-x-4 gap-y-1.5 border-t border-linha pt-4 text-sm sm:grid-cols-[auto_1fr]">
+            <dt className="rotulo pt-0.5">cliente</dt>
+            <dd>{CLIENTE.orgao}</dd>
+            <dt className="rotulo pt-0.5">área</dt>
+            <dd>{CLIENTE.area}</dd>
+          </dl>
           <AtalhosDeDocumento
             documentos={escolher(documentos, [
               's2-processo-hoje',
@@ -454,6 +498,20 @@ export default async function Pagina() {
             tudo que já foi entregue, semana por semana. clique no título e o documento abre
             aqui mesmo.
           </p>
+          {/* A pasta do Drive é espelho: os PDFs das apresentações e o que a
+              disciplina pede salvo lá. O documento continua sendo o daqui. */}
+          {URL_DRIVE ? (
+            <p className="mt-2 text-sm lowercase">
+              <a
+                href={URL_DRIVE}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="underline decoration-linha-alta underline-offset-4 hover:text-acento hover:decoration-acento"
+              >
+                a pasta da equipe no drive ↗
+              </a>
+            </p>
+          ) : null}
           <Biblioteca documentos={documentos} />
         </section>
 

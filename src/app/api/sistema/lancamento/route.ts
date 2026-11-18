@@ -22,6 +22,9 @@ function deVolta(unidade: string, resultado: { ok?: string; erro?: string }): st
  * finito e não negativo, evidência com conteúdo, subindicador, unidade e ciclo
  * existentes. Subindicador 'indice' exige `valor`; 'razao' exige `numerador` e
  * `denominador`. A janela de prazo é garantida pela camada de dados.
+ *
+ * A escrita cai na cópia de QUEM LANÇOU (ver `sistema/estado.ts`): o driver
+ * grava o diário dele no cookie, e ninguém mais vê o número.
  */
 const corpoSchema = z.object({
   subindicadorId: z.string().min(1).max(80),
