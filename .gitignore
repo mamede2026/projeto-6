@@ -56,3 +56,8 @@ next-env.d.ts
 ml/saidas/
 .ipynb_checkpoints/
 __pycache__/
+
+# Base pública do Previne Brasil (Ministério da Saúde, CC BY-ND 3.0): baixada, não
+# versionada. A licença não permite redistribuir versão derivada e são ~45 MB.
+# Origem: https://dadosabertos.saude.gov.br/dataset/indicadores_desempenho_sisab
+ml/data/previne/
